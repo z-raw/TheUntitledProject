@@ -5,10 +5,9 @@ import org.http4s.ember.server.EmberServerBuilder
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import pureconfig.ConfigSource
-import theproject.config.Config
+import theproject.config.{AppConfig, EmberConfig}
 import theproject.config.syntax.*
-
-import theproject.modules.{Core, HttpApi}
+import theproject.modules.{Core, Database, HttpApi}
 
 object Application extends IOApp.Simple {
 
@@ -16,22 +15,24 @@ object Application extends IOApp.Simple {
 
   override def run = {
     ConfigSource.default
-      .loadF[IO, Config]
-      .flatMap { config =>
-        val appResource = for {
-          core <- Core[IO]
-          httpApi <- HttpApi[IO](core)
-          server <- EmberServerBuilder
-            .default[IO]
-            .withHost(config.host)
-            .withPort(config.port)
-            .withHttpApp(httpApi.routes.orNotFound)
-            .build
+      .loadF[IO, AppConfig]
+      .flatMap {
+        case AppConfig(emberConfig, postgresConfig) =>
+          val appResource = for {
+            xa <- Database.makePostgresResource[IO](postgresConfig)
+            core <- Core[IO](xa)
+            httpApi <- HttpApi[IO](core)
+            server <- EmberServerBuilder
+              .default[IO]
+              .withHost(emberConfig.host)
+              .withPort(emberConfig.port)
+              .withHttpApp(httpApi.routes.orNotFound)
+              .build
 
-        }
-        yield server
+          }
+          yield server
 
-        appResource.useForever
+          appResource.useForever
       }
   }
 }

@@ -3,8 +3,8 @@ package theproject.http.routes
 import cats.effect.*
 import cats.syntax.all.*
 import io.circe.generic.auto.*
-import org.http4s.*
 import org.http4s.circe.CirceEntityCodec.*
+import org.http4s.*
 import org.http4s.dsl.*
 import org.http4s.server.*
 import org.typelevel.log4cats.Logger

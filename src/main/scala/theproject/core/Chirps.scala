@@ -45,8 +45,8 @@ class LiveChirps[F[_] : MonadCancelThrow: Logger] private(xa: Transactor[F]) ext
          |INSERT INTO chirps 
          |(id,
          | user_id,
-         |  content,
-         |   created_at)
+         | content,
+         | created_at)
          |   
          |   VALUES
          |   (${UUID.randomUUID()},
