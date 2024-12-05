@@ -1,6 +1,7 @@
 
 scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings")
 
+val myOrganization = "Zorawar Sachdev"
 val scala3Version = "3.3.4"
 
 val circeVersion = "0.14.1"
@@ -48,4 +49,17 @@ lazy val root = project
     ),
     Compile / mainClass := Some("theproject.Application")
   )
+
+lazy val stagingBuild = (project in (file("build/staging")))
+  .enablePlugins(JavaAppPackaging, DockerPlugin)
+  .settings(
+    name            := "chirpster-staging",
+    scalaVersion    := scala3Version,
+    organization    := myOrganization,
+    dockerBaseImage := "openjdk:11-jre-slim-buster",
+    dockerExposedPorts ++= Seq(4041),
+    Compile / mainClass         := Some("theproject.Application"),
+    Compile / resourceDirectory := (( Compile / resourceDirectory).value / "staging")
+  )
+  .dependsOn(root)
 
