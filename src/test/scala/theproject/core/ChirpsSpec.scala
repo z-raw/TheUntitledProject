@@ -7,7 +7,8 @@ import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.matchers.should.Matchers
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import theproject.domain.chirps.{Chirp, ChirpInfo}
+import theproject.domain.chirps.{Chirp, ChirpFilter, ChirpInfo}
+import theproject.domain.pagination.Pagination
 import theproject.fixtures.ChirpFixture
 
 import java.util.UUID
@@ -29,7 +30,7 @@ class ChirpsSpec
       transactor.use { xa =>
         val program = for {
           chirps <- LiveChirps[IO](xa)
-          result <- chirps.all
+          result <- chirps.all(ChirpFilter(), Pagination.default)
         } yield result
 
         program.asserting(_ shouldBe List(ValidChirp))
@@ -91,7 +92,7 @@ class ChirpsSpec
       val program = for {
         chirps <- LiveChirps[IO](xa)
         _ <- chirps.delete(ValidChirpUUID) // delete the only chirp
-        result <- chirps.all
+        result <- chirps.all(ChirpFilter(), Pagination.default)
       } yield result
 
       program.asserting(_ shouldBe List.empty)

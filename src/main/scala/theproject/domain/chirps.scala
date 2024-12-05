@@ -8,4 +8,10 @@ object chirps:
   case class ChirpInfo(
       content: String
   )
+  
+  final case class ChirpFilter(
+      userId: Option[UUID] = None,
+      fromDate: Option[Long] = None,
+      toDate: Option[Long] = None
+  )
 

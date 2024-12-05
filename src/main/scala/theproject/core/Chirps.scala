@@ -8,16 +8,18 @@ import doobie.implicits.*
 import doobie.postgres.implicits.*
 import doobie.util.*
 import org.typelevel.log4cats.Logger
-
-import theproject.domain.chirps.{Chirp, ChirpInfo}
+import theproject.domain.*
+import theproject.domain.chirps.*
+import theproject.domain.pagination.*
 import theproject.logging.syntax.*
-
 
 import java.util.UUID
 
 trait Chirps[F[_]] {
 
-  def all: F[List[Chirp]]
+  def all(): F[List[Chirp]]
+
+  def all(filter: ChirpFilter, pagination: Pagination): F[List[Chirp]]
 
   def create(userId: UUID, chirpInfo: ChirpInfo): F[UUID]
 
@@ -31,11 +33,38 @@ trait Chirps[F[_]] {
 
 class LiveChirps[F[_] : MonadCancelThrow: Logger] private(xa: Transactor[F]) extends Chirps[F] {
 
-  def all: F[List[Chirp]] =
+  def all(): F[List[Chirp]] =
     sql"""
          |SELECT id, user_id, content, created_at
          |FROM chirps
          |""".stripMargin
+      .query[Chirp]
+      .to[List]
+      .transact(xa)
+
+  def all(filter: ChirpFilter, pagination: Pagination): F[List[Chirp]] =
+
+    val selectFr =
+      fr"""
+         |SELECT id,
+         | user_id,
+         |  content,
+         |   created_at
+         |""".stripMargin
+
+    val fromFr = fr"FROM chirps"
+
+    val whereFr = Fragments.whereAndOpt(
+      filter.userId.map(userId => fr"user_id = $userId"),
+      filter.fromDate.map(fromDate => fr"created_at >= $fromDate"),
+      filter.toDate.map(toDate => fr"created_at <= $toDate")
+    )
+
+    val limitOffsetFr = fr"ORDER BY created_at DESC LIMIT ${pagination.limit} OFFSET ${pagination.offset}"
+
+    val statement = selectFr |+| fromFr |+| whereFr |+| limitOffsetFr
+
+    statement
       .query[Chirp]
       .to[List]
       .transact(xa)

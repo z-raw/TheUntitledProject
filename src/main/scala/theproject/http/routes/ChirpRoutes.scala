@@ -7,19 +7,27 @@ import org.http4s.*
 import org.http4s.circe.CirceEntityCodec.*
 import org.http4s.server.*
 import org.typelevel.log4cats.Logger
-
 import theproject.core.Chirps
-import theproject.domain.chirps.{Chirp, ChirpInfo}
+import theproject.domain.chirps.{Chirp, ChirpFilter, ChirpInfo}
+import theproject.domain.pagination.Pagination
 import theproject.http.responses.FailureResponse
 import theproject.http.validation.syntax.*
+import theproject.logging.syntax.*
 
 import java.util.UUID
 
 class ChirpRoutes[F[_] : Concurrent : Logger] private(chirps: Chirps[F]) extends HttpValidationDsl[F]:
 
+  object LimitQueryParam extends OptionalQueryParamDecoderMatcher[Int]("limit")
+  object OffsetQueryParam extends OptionalQueryParamDecoderMatcher[Int]("offset")
+  
   private val allChirpsRoute: HttpRoutes[F] = HttpRoutes.of[F]:
-    case GET -> Root =>
-      chirps.all.flatMap(Ok(_))
+    case req @ POST -> Root :? LimitQueryParam(limit) +& OffsetQueryParam(offset) =>
+      for{
+        filter <- req.as[ChirpFilter].logError(e => s"Error parsing filter: $e")
+        chirps <- chirps.all(filter, Pagination(limit,offset))
+        resp <- Ok(chirps)
+      } yield resp
 
 
   private val findChirpRoute: HttpRoutes[F] = HttpRoutes.of[F]:

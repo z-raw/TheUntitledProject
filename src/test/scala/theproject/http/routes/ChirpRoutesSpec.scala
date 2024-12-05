@@ -13,6 +13,8 @@ import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import theproject.core.Chirps
 import theproject.domain.chirps.*
+import theproject.domain.pagination
+import theproject.domain.pagination.Pagination
 import theproject.fixtures.ChirpFixture
 import theproject.http.responses.FailureResponse
 
@@ -31,7 +33,11 @@ class ChirpRoutesSpec
   ///////////////////
 
   val chirps: Chirps[IO] = new Chirps[IO]:
-    override def all: IO[List[Chirp]] =
+
+    override def all(): IO[List[Chirp]] =
+      IO(List(ValidChirp))
+
+    override def all(filter: ChirpFilter, pagination: Pagination): IO[List[Chirp]] =
       IO(List(ValidChirp))
 
     override def create(userId: UUID, chirpInfo: ChirpInfo): IO[UUID] =
@@ -63,7 +69,7 @@ class ChirpRoutesSpec
 
       for {
         response <- chirpRoutes.orNotFound.run(
-          Request(method = GET, uri = uri"/chirps")
+          Request(method = POST, uri = uri"/chirps").withEntity(ChirpFilter())
         )
         retreived <- response.as[List[Chirp]]
 
@@ -145,6 +151,77 @@ class ChirpRoutesSpec
     } yield {
       responseValid.status mustBe Ok
       responseInvalid.status mustBe NotFound
+    }
+  }
+
+  "should filter chirps by limit and offset" in {
+
+    for {
+      response <- chirpRoutes.orNotFound.run(
+        Request(method = POST, uri = uri"/chirps?limit=10&offset=0")
+      )
+      retreived <- response.as[List[Chirp]]
+
+    } yield {
+      response.status mustBe Ok
+      retreived.size mustBe <= (10)
+      retreived mustBe List(ValidChirp)
+    }
+  }
+
+  "should filter chirps by toDate" in {
+
+    for {
+      response <- chirpRoutes.orNotFound.run(
+        Request(method = POST, uri = uri"/chirps?toDate=40")
+      )
+      retreived <- response.as[List[Chirp]]
+
+    } yield {
+      response.status mustBe Ok
+      retreived mustBe List.empty
+    }
+  }
+
+  "should filter chirps by fromDate" in {
+
+    for {
+      response <- chirpRoutes.orNotFound.run(
+        Request(method = POST, uri = uri"/chirps?fromDate=40")
+      )
+      retreived <- response.as[List[Chirp]]
+
+    } yield {
+      response.status mustBe Ok
+      retreived mustBe List(ValidChirp)
+    }
+  }
+
+  "should filter chirps by valid userId" in {
+
+    for {
+      response <- chirpRoutes.orNotFound.run(
+        Request(method = POST, uri = uri"/chirps?userId=00000000-0000-0000-0000-000000000001")
+      )
+      retreived <- response.as[List[Chirp]]
+
+    } yield {
+      response.status mustBe Ok
+      retreived mustBe List(ValidChirp)
+    }
+  }
+
+  "should filter chirps by invalid userId" in {
+
+    for {
+      response <- chirpRoutes.orNotFound.run(
+        Request(method = POST, uri = uri"/chirps?userId=00000000-0000-0000-0000-000000000002")
+      )
+      retreived <- response.as[List[Chirp]]
+
+    } yield {
+      response.status mustBe Ok
+      retreived mustBe List.empty
     }
   }
 }
