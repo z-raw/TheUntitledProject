@@ -1,7 +1,7 @@
 
 scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings")
 
-val myOrganization = "Zorawar Sachdev"
+val myOrganization = "ZS"
 val scala3Version = "3.3.4"
 
 val circeVersion = "0.14.1"
