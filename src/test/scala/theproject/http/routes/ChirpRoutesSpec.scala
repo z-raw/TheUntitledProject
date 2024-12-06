@@ -38,7 +38,11 @@ class ChirpRoutesSpec
       IO(List(ValidChirp))
 
     override def all(filter: ChirpFilter, pagination: Pagination): IO[List[Chirp]] =
-      IO(List(ValidChirp))
+      filter match
+        case ChirpFilter(Some(User2UUID), _, _) => IO(List.empty)
+        case ChirpFilter(_, _, Some(40)) => IO(List.empty)
+        case _ => IO(List(ValidChirp))
+
 
     override def create(userId: UUID, chirpInfo: ChirpInfo): IO[UUID] =
       IO(ValidChirpUUID)
@@ -78,7 +82,7 @@ class ChirpRoutesSpec
         retreived mustBe List(ValidChirp)
       }
     }
-    
+
     "should return a chirp with a valid id" in {
 
       for {
@@ -92,7 +96,7 @@ class ChirpRoutesSpec
         retreived mustBe ValidChirp
       }
     }
-    
+
     "should return a chirp not found with an invalid id" in {
 
       for {
@@ -106,7 +110,7 @@ class ChirpRoutesSpec
         retreived mustBe FailureResponse("Chirp not found")
       }
     }
-    
+
     "should create a new chirp" in {
 
       for {
@@ -120,7 +124,7 @@ class ChirpRoutesSpec
         retreived mustBe ValidChirpUUID
       }
     }
-    
+
     "should update a chirp with a valid id" in {
 
       for {
@@ -137,7 +141,7 @@ class ChirpRoutesSpec
       }
     }
   }
-  
+
   "should delete a chirp with a valid id" in {
 
     for {
@@ -158,13 +162,13 @@ class ChirpRoutesSpec
 
     for {
       response <- chirpRoutes.orNotFound.run(
-        Request(method = POST, uri = uri"/chirps?limit=10&offset=0")
+        Request(method = POST, uri = uri"/chirps?limit=10&offset=0").withEntity(ChirpFilter())
       )
       retreived <- response.as[List[Chirp]]
 
     } yield {
       response.status mustBe Ok
-      retreived.size mustBe <= (10)
+      retreived.size mustBe <=(10)
       retreived mustBe List(ValidChirp)
     }
   }
@@ -173,8 +177,8 @@ class ChirpRoutesSpec
 
     for {
       response <- chirpRoutes.orNotFound.run(
-        Request(method = POST, uri = uri"/chirps?toDate=40")
-      )
+        Request(method = POST, uri = uri"/chirps")
+          .withEntity(ChirpFilter(toDate = Some(40))))
       retreived <- response.as[List[Chirp]]
 
     } yield {
@@ -187,7 +191,8 @@ class ChirpRoutesSpec
 
     for {
       response <- chirpRoutes.orNotFound.run(
-        Request(method = POST, uri = uri"/chirps?fromDate=40")
+        Request(method = POST, uri = uri"/chirps")
+          .withEntity(ChirpFilter(fromDate = Some(40)))
       )
       retreived <- response.as[List[Chirp]]
 
@@ -201,7 +206,8 @@ class ChirpRoutesSpec
 
     for {
       response <- chirpRoutes.orNotFound.run(
-        Request(method = POST, uri = uri"/chirps?userId=00000000-0000-0000-0000-000000000001")
+        Request(method = POST, uri = uri"/chirps")
+          .withEntity(ChirpFilter(userId = Some(User1UUID)))
       )
       retreived <- response.as[List[Chirp]]
 
@@ -215,8 +221,8 @@ class ChirpRoutesSpec
 
     for {
       response <- chirpRoutes.orNotFound.run(
-        Request(method = POST, uri = uri"/chirps?userId=00000000-0000-0000-0000-000000000002")
-      )
+        Request(method = POST, uri = uri"/chirps")
+          .withEntity(ChirpFilter(userId = Some(User2UUID))))
       retreived <- response.as[List[Chirp]]
 
     } yield {
