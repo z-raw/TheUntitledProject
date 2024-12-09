@@ -32,7 +32,7 @@ object Application extends IOApp.Simple {
           }
           yield server
 
-          appResource.useForever
+          appResource.use(_ => IO.println("Backend is up...!") *> IO.never)
       }
   }
 }

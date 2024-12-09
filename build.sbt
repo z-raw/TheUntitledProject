@@ -1,4 +1,3 @@
-
 scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings")
 
 val myOrganization = "ZS"
@@ -22,7 +21,6 @@ lazy val root = project
   .in(file("."))
   .settings(
     name := "theproject",
-    version := "0.1.0-SNAPSHOT",
     scalaVersion := scala3Version,
     libraryDependencies ++= Seq(
       "org.typelevel" %% "cats-effect" % catsEffectVersion,
@@ -53,13 +51,20 @@ lazy val root = project
 lazy val stagingBuild = (project in (file("build/staging")))
   .enablePlugins(JavaAppPackaging, DockerPlugin)
   .settings(
-    name            := "chirpster-staging",
+    name            := "chirpster-staging-1",
+    version         := "0.1.6-SNAPSHOT", // Bumping the version will trigger CD by k8s
     scalaVersion    := scala3Version,
     organization    := myOrganization,
     dockerBaseImage := "openjdk:11-jre-slim-buster",
     dockerExposedPorts ++= Seq(4041),
     Compile / mainClass         := Some("theproject.Application"),
-    Compile / resourceDirectory := (( Compile / resourceDirectory).value / "staging")
+    Compile / resourceDirectory := (( Compile / resourceDirectory).value / "staging"),
+    Docker / dockerBuildCommand := {
+      if (sys.props("os.arch") != "amd64") {
+        // Needed for local builds on Mac arm64 M1s
+        dockerExecCommand.value ++ Seq("buildx", "build", "--platform=linux/amd64", "--load") ++ dockerBuildOptions.value :+ "."
+      } else dockerBuildCommand.value
+    }
   )
   .dependsOn(root)
 
